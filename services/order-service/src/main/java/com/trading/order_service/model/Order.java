@@ -1,6 +1,5 @@
 package com.trading.order_service.model;
 
-
 import com.trading.order_service.enums.OrderSide;
 import com.trading.order_service.enums.OrderStatus;
 import com.trading.order_service.enums.OrderType;
