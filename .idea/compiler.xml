@@ -9,7 +9,7 @@
         <outputRelativeToContentRoot value="true" />
         <module name="service-registry" />
       </profile>
-      <profile name="Annotation profile for order-service" enabled="true">
+      <profile name="Annotation profile for matching-engine-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -19,6 +19,7 @@
         <module name="api-gateway" />
         <module name="market-data-service" />
         <module name="order-service" />
+        <module name="matching-engine-service" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
@@ -29,6 +30,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="api-gateway" options="-parameters" />
       <module name="market-data-service" options="-parameters" />
+      <module name="matching-engine-service" options="-parameters" />
       <module name="order-service" options="-parameters" />
       <module name="service-registry" options="-parameters" />
     </option>
