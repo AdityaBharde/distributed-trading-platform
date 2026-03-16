@@ -17,8 +17,11 @@ spring-boot-*.log
 # Lombok
 .apt_generated/
 
+# IntelliJ
+.idea/
+.idea
+*.iml
+
 # OS
 .DS_Store
 Thumbs.db
-.idea
-.idea/
