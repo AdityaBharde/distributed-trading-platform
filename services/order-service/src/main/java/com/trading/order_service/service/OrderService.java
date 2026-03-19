@@ -2,6 +2,8 @@ package com.trading.order_service.service;
 
 import com.trading.order_service.dto.CreateOrderRequest;
 import com.trading.order_service.enums.OrderStatus;
+import com.trading.order_service.event.OrderCreatedEvent;
+import com.trading.order_service.event.OrderEventProducer;
 import com.trading.order_service.model.Order;
 import com.trading.order_service.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +15,8 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class OrderService {
     private final OrderRepository orderRepository;
+    private final OrderEventProducer orderEventProducer;
+
 
     public Order createOrder(CreateOrderRequest request) {
         Order order = Order.builder()
@@ -24,8 +28,19 @@ public class OrderService {
                 .status(OrderStatus.NEW)
                 .createdAt(Instant.now())
                 .build();
-
-        return orderRepository.save(order);
+        Order order1 = orderRepository.save(order);
+        OrderCreatedEvent orderCreatedEvent =new OrderCreatedEvent(
+                order1.getId(),
+                order1.getSymbol(),
+                order1.getSide(),
+                order1.getOrderType(),
+                order1.getPrice(),
+                order1.getQuantity(),
+                order1.getCreatedAt()
+                );
+        orderEventProducer.publishOrderCreatedEvent(orderCreatedEvent);
+        return order1;
     }
+
 
 }
