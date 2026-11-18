@@ -1,0 +1,20 @@
+package com.trading.trading_service.order.config;
+
+
+import com.trading.trading_service.Topics;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.config.TopicBuilder;
+
+@Configuration
+public class KafkaTopicConfig {
+
+    @Bean
+    public NewTopic orderCreatedTopic(){
+        return TopicBuilder.name(Topics.ORDER_CREATED)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+}

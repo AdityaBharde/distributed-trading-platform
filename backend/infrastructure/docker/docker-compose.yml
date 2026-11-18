@@ -6,44 +6,28 @@ networks:
 
 volumes:
   kafka-data:
-  zookeeper-data:
   postgres-data:
+  redis-data:
 
 services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: zookeeper
-    networks:
-      - trading-network
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-      ZOOKEEPER_SYNC_LIMIT: 2
-    volumes:
-      - zookeeper-data:/var/lib/zookeeper/data
-    ports:
-      - "2181:2181"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "2181"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka
-    depends_on:
-      zookeeper:
-        condition: service_healthy
     networks:
       - trading-network
     ports:
       - "9092:9092"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # KRaft mode (single node acts as broker + controller, no ZooKeeper)
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
 
       # Replication and durability
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -90,7 +74,7 @@ services:
     ports:
       - "8761:8761"
     environment:
-      - JAVA_OPTS=-Xms256m -Xmx512m
+      - JAVA_TOOL_OPTIONS=-Xms256m -Xmx512m
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8761/actuator/health"]
@@ -111,7 +95,7 @@ services:
         condition: service_healthy
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
-      - JAVA_OPTS=-Xms256m -Xmx512m
+      - JAVA_TOOL_OPTIONS=-Xms256m -Xmx512m
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
@@ -120,31 +104,81 @@ services:
       retries: 3
       start_period: 60s
 
-  order-db:
-    image: postgres:15-alpine
-    container_name: order-db
+  # One Postgres instance: TimescaleDB + pgvector + pg_trgm (see init-db/01-init.sh).
+  # Databases: quantanatara (platform), orderdb (trading-service), keycloak.
+  postgres:
+    image: timescale/timescaledb-ha:pg16
+    container_name: postgres
     networks:
       - trading-network
     environment:
-      POSTGRES_DB: orderdb
+      POSTGRES_DB: quantanatara
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_INITDB_ARGS: "-E UTF8"
-      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in .env}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/home/postgres/pgdata
+      - ./init-db:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d quantanatara"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - trading-network
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  order-service:
-    build: ../../services/order-service
-    container_name: order-service
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: keycloak
+    # start-dev: local development only (HTTP, no caching). Use `start` with TLS for the demo VM.
+    command: ["start-dev"]
+    networks:
+      - trading-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in .env}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:?Set KEYCLOAK_ADMIN in .env}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
+      KC_HTTP_PORT: 8080
+    ports:
+      - "8180:8080"
+    restart: unless-stopped
+    healthcheck:
+      # The image has no curl; probe the port with bash.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  # Trading deployable: order management + matching engine (modules = packages)
+  trading-service:
+    build: ../../services/trading-service
+    container_name: trading-service
     networks:
       - trading-network
     ports:
@@ -154,15 +188,15 @@ services:
         condition: service_healthy
       service-registry:
         condition: service_healthy
-      order-db:
+      postgres:
         condition: service_healthy
     environment:
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://order-db:5432/orderdb
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/orderdb
       - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
-      - JAVA_OPTS=-Xms512m -Xmx1024m -XX:+UseG1GC
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      - JAVA_TOOL_OPTIONS=-Xms256m -Xmx512m -XX:+UseSerialGC
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
@@ -171,33 +205,10 @@ services:
       retries: 3
       start_period: 90s
 
-  matching-engine-service:
-    build: ../../services/matching-engine-service
-    container_name: matching-engine-service
-    networks:
-      - trading-network
-    ports:
-      - "8083:8083"
-    depends_on:
-      kafka:
-        condition: service_healthy
-      service-registry:
-        condition: service_healthy
-    environment:
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
-      - JAVA_OPTS=-Xms512m -Xmx1024m -XX:+UseG1GC
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8083/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 90s
-
-  market-data-service:
-    build: ../../services/market-data-service
-    container_name: market-data-service
+  # Market deployable: market data (+ realtime gateway later)
+  market-service:
+    build: ../../services/market-service
+    container_name: market-service
     networks:
       - trading-network
     ports:
@@ -207,10 +218,32 @@ services:
         condition: service_healthy
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
-      - JAVA_OPTS=-Xms256m -Xmx512m
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx384m -XX:+UseSerialGC
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Analytics deployable: indicators, screener, alerts, notifications (later)
+  analytics-service:
+    build: ../../services/analytics-service
+    container_name: analytics-service
+    networks:
+      - trading-network
+    ports:
+      - "8084:8084"
+    depends_on:
+      service-registry:
+        condition: service_healthy
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx384m -XX:+UseSerialGC
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8084/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3

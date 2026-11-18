@@ -45,9 +45,9 @@ Each service owns its own **PostgreSQL** database instance — no shared databas
 | Service | Responsibility |
 |---|---|
 | `api-gateway` | Single entry point. Routes requests, applies cross-cutting concerns (auth, rate limiting) |
-| `order-service` | Accepts and persists trade orders. Publishes `OrderCreatedEvent` to Kafka |
-| `matching-engine-service` | Consumes order events, matches buy/sell orders, publishes `TradeExecutedEvent` |
-| `market-data-service` | Manages real-time and historical market data (prices, symbols) |
+| `trading-service` | Order management + matching engine (two modules in one deployable). Persists orders, publishes `OrderCreatedEvent` to Kafka, consumes it and matches buy/sell orders |
+| `market-service` | Real-time and historical market data (prices, symbols) |
+| `analytics-service` | Indicators, screener, alerts (skeleton for now) |
 | `trade-execution-service` | Handles post-match trade settlement and execution lifecycle |
 | `user-service` | Manages user accounts, authentication, and portfolios |
 | `infrastructure/service-registry` | Eureka server — all services register and discover each other here |
@@ -101,7 +101,7 @@ Instant createdAt
 
 ### OrderCreatedEvent (Kafka Message)
 ```java
-// Published by order-service → consumed by matching-engine-service
+// Published by the order module → consumed by the matching module (both inside trading-service)
 String orderId
 String symbol
 OrderSide side
@@ -117,10 +117,10 @@ Instant createdAt
 
 ```
 1. Client sends POST /api/orders
-2. API Gateway routes to order-service
-3. order-service validates and persists the order (PostgreSQL)
-4. order-service publishes OrderCreatedEvent → Kafka topic: order-events
-5. matching-engine-service consumes OrderCreatedEvent
+2. API Gateway routes to trading-service
+3. trading-service (order module) validates and persists the order (PostgreSQL)
+4. trading-service publishes OrderCreatedEvent → Kafka topic: order-events
+5. trading-service (matching module) consumes OrderCreatedEvent
 6. Matching engine attempts to pair with opposing order
 7. On match: publishes TradeExecutedEvent → Kafka topic: trade-events
 8. trade-execution-service consumes TradeExecutedEvent, settles the trade
@@ -131,7 +131,7 @@ Instant createdAt
 ## Project Phases
 
 - [x] **Phase 1 — Service Foundation**: All six microservices scaffolded with domain models, JPA entities, repositories, and REST controllers. API Gateway and Eureka registry operational.
-- [ ] **Phase 2 — Kafka Integration** *(in progress)*: Async event-driven communication between services. `OrderCreatedEvent` published by order-service, consumed by matching-engine-service.
+- [ ] **Phase 2 — Kafka Integration** *(in progress)*: Async event-driven communication between services. `OrderCreatedEvent` published and consumed inside trading-service (order → matching modules).
 - [ ] **Phase 3 — Docker & Kubernetes**: Full containerization with Docker Compose for local dev; Kubernetes manifests for orchestration, scaling, and resilience.
 - [ ] **Phase 4 — Load Testing & Observability**: Performance benchmarking under simulated trading load. Observability stack (Prometheus, Grafana, distributed tracing).
 
@@ -146,10 +146,13 @@ Instant createdAt
 
 ### Running Locally
 
-**1. Start infrastructure (Kafka, Zookeeper, PostgreSQL)**
+**1. Set your passwords, then start infrastructure (Kafka (KRaft), PostgreSQL+TimescaleDB+pgvector, Redis, Keycloak)**
 ```bash
-docker-compose up -d
+cd backend/infrastructure/docker
+cp .env.example .env      # then edit .env and set your own passwords (git-ignored)
+docker compose up -d
 ```
+When running a service outside Docker, export `DB_PASSWORD` (same value as `POSTGRES_PASSWORD`) first.
 
 **2. Start the service registry (Eureka)**
 ```bash
@@ -159,9 +162,9 @@ mvn spring-boot:run
 
 **3. Start each service** (in separate terminals)
 ```bash
-cd services/order-service && mvn spring-boot:run
-cd services/market-data-service && mvn spring-boot:run
-cd services/matching-engine-service && mvn spring-boot:run
+cd services/trading-service && mvn spring-boot:run
+cd services/market-service && mvn spring-boot:run
+cd services/analytics-service && mvn spring-boot:run
 cd services/api-gateway && mvn spring-boot:run
 ```
 
@@ -197,12 +200,12 @@ distributed-trading-platform/
 │   └── service-registry/       # Eureka discovery server
 ├── services/
 │   ├── api-gateway/            # Spring Cloud Gateway
-│   ├── order-service/          # Order management + Kafka producer
-│   ├── matching-engine-service/ # Order matching + Kafka consumer
-│   ├── market-data-service/    # Market data management
+│   ├── trading-service/        # Orders (Kafka producer) + matching engine (Kafka consumer)
+│   ├── market-service/         # Market data
+│   ├── analytics-service/      # Indicators, screener, alerts (skeleton)
 │   ├── trade-execution-service/ # Trade settlement
 │   └── user-service/           # User accounts and auth
-└── docker-compose.yml          # Kafka, Zookeeper, PostgreSQL
+└── docker-compose.yml          # Kafka (KRaft), PostgreSQL+TimescaleDB+pgvector, Redis, Keycloak
 ```
 
 ---

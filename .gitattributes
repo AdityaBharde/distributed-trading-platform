@@ -1,1 +1,4 @@
 * text=auto
+
+# Shell scripts must keep LF (they run inside Linux containers)
+*.sh text eol=lf
