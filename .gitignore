@@ -28,3 +28,6 @@ Thumbs.db
 # Secrets (copy .env.example to .env)
 .env
 *.env.local
+
+# Local docs (kept on disk, not tracked)
+docs/
