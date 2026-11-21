@@ -6,8 +6,11 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<SQ
 -- Order/matching data (trading-service).
 CREATE DATABASE orderdb;
 
--- User data owned by analytics-service (profiles now; watchlists, drawings, alerts later).
+-- User data owned by analytics-service (watchlists, drawings, alerts later).
 CREATE DATABASE analyticsdb;
+
+-- Accounts, refresh tokens and profiles (identity-service). Schema managed by Flyway.
+CREATE DATABASE identitydb;
 
 -- Platform database (POSTGRES_DB) already exists: enable time-series, vector and fuzzy-search extensions.
 CREATE EXTENSION IF NOT EXISTS timescaledb;

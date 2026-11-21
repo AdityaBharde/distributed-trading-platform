@@ -152,7 +152,7 @@ cd backend/infrastructure/docker
 cp .env.example .env      # then edit .env and set your own passwords (git-ignored)
 docker compose up -d
 ```
-When running a service outside Docker, export `DB_PASSWORD` (same value as `POSTGRES_PASSWORD`) first.
+When running a service outside Docker, export `DB_PASSWORD` (same value as `POSTGRES_PASSWORD`) first. Postgres is published on host port **5434** (not 5432, which a native Postgres often occupies); services inside Docker still use `postgres:5432`.
 
 **2. Start the service registry (Eureka)**
 ```bash
