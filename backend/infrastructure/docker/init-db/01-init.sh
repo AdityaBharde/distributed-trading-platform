@@ -3,12 +3,11 @@
 set -euo pipefail
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<SQL
--- Keycloak gets its own role and database.
-CREATE ROLE keycloak LOGIN PASSWORD '${KEYCLOAK_DB_PASSWORD}';
-CREATE DATABASE keycloak OWNER keycloak;
-
 -- Order/matching data (trading-service).
 CREATE DATABASE orderdb;
+
+-- User data owned by analytics-service (profiles now; watchlists, drawings, alerts later).
+CREATE DATABASE analyticsdb;
 
 -- Platform database (POSTGRES_DB) already exists: enable time-series, vector and fuzzy-search extensions.
 CREATE EXTENSION IF NOT EXISTS timescaledb;

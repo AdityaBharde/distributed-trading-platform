@@ -146,7 +146,7 @@ Instant createdAt
 
 ### Running Locally
 
-**1. Set your passwords, then start infrastructure (Kafka (KRaft), PostgreSQL+TimescaleDB+pgvector, Redis, Keycloak)**
+**1. Set your passwords, then start infrastructure (Kafka (KRaft), PostgreSQL+TimescaleDB+pgvector, Redis)**
 ```bash
 cd backend/infrastructure/docker
 cp .env.example .env      # then edit .env and set your own passwords (git-ignored)
@@ -204,8 +204,8 @@ distributed-trading-platform/
 │   ├── market-service/         # Market data
 │   ├── analytics-service/      # Indicators, screener, alerts (skeleton)
 │   ├── trade-execution-service/ # Trade settlement
-│   └── user-service/           # User accounts and auth
-└── docker-compose.yml          # Kafka (KRaft), PostgreSQL+TimescaleDB+pgvector, Redis, Keycloak
+│   └── identity-service/       # Users, auth (JWT) and profiles (planned, F1)
+└── docker-compose.yml          # Kafka (KRaft), PostgreSQL+TimescaleDB+pgvector, Redis
 ```
 
 ---

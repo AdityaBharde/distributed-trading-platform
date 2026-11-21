@@ -105,7 +105,7 @@ services:
       start_period: 60s
 
   # One Postgres instance: TimescaleDB + pgvector + pg_trgm (see init-db/01-init.sh).
-  # Databases: quantanatara (platform), orderdb (trading-service), keycloak.
+  # Databases: quantanatara (platform), orderdb (trading-service), analyticsdb (analytics-service).
   postgres:
     image: timescale/timescaledb-ha:pg16
     container_name: postgres
@@ -115,7 +115,6 @@ services:
       POSTGRES_DB: quantanatara
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in .env}
     volumes:
       - postgres-data:/home/postgres/pgdata
       - ./init-db:/docker-entrypoint-initdb.d:ro
@@ -145,35 +144,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.0
-    container_name: keycloak
-    # start-dev: local development only (HTTP, no caching). Use `start` with TLS for the demo VM.
-    command: ["start-dev"]
-    networks:
-      - trading-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in .env}
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:?Set KEYCLOAK_ADMIN in .env}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
-      KC_HTTP_PORT: 8080
-    ports:
-      - "8180:8080"
-    restart: unless-stopped
-    healthcheck:
-      # The image has no curl; probe the port with bash.
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 60s
 
   # Trading deployable: order management + matching engine (modules = packages)
   trading-service:
