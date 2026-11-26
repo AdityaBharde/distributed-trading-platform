@@ -110,7 +110,8 @@ services:
       start_period: 60s
 
   # One Postgres instance: TimescaleDB + pgvector + pg_trgm (see init-db/01-init.sh).
-  # Databases: quantanatara (platform), orderdb (trading-service), analyticsdb (analytics-service), identitydb (identity-service).
+  # Databases: quantanatara (platform), orderdb (trading-service), analyticsdb (analytics-service), identitydb (identity-service),
+  # marketdb (market-service).
   postgres:
     image: timescale/timescaledb-ha:pg16
     container_name: postgres
@@ -194,7 +195,12 @@ services:
     depends_on:
       service-registry:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/marketdb
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
       - SECURITY_JWT_JWK_SET_URI=http://identity-service:8083/.well-known/jwks.json
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx384m -XX:+UseSerialGC

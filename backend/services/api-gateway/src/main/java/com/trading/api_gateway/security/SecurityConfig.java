@@ -46,7 +46,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsSource))
                 .authorizeExchange(ex -> ex
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()   // CORS preflight carries no token
-                        .pathMatchers("/admin/**").hasRole("ADMIN")
+                        .pathMatchers("/admin/**", "/market/admin/**").hasRole("ADMIN")
                         .pathMatchers(HttpMethod.POST, "/auth/register", "/auth/login", "/auth/refresh", "/auth/logout").permitAll()
                         .pathMatchers("/actuator/health/**", "/actuator/info", "/health", "/*/health").permitAll()
                         .anyExchange().authenticated())                         // includes /auth/logout-all

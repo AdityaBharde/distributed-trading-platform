@@ -12,6 +12,9 @@ CREATE DATABASE analyticsdb;
 -- Accounts, refresh tokens and profiles (identity-service). Schema managed by Flyway.
 CREATE DATABASE identitydb;
 
+-- Instrument master, later candles (market-service). Schema managed by Flyway.
+CREATE DATABASE marketdb;
+
 -- Platform database (POSTGRES_DB) already exists: enable time-series, vector and fuzzy-search extensions.
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 CREATE EXTENSION IF NOT EXISTS vector;

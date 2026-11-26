@@ -159,6 +159,14 @@ class GatewaySecurityTest {
     }
 
     @Test
+    void marketAdminPathsNeedTheAdminRole() {
+        String user = userToken(UUID.randomUUID().toString());
+
+        client.post().uri("/market/admin/instruments/import").header(HttpHeaders.AUTHORIZATION, "Bearer " + user)
+                .exchange().expectStatus().isForbidden();
+    }
+
+    @Test
     void corsPreflightIsAnsweredWithoutATokenAndErrorsStillCarryCorsHeaders() {
         client.options().uri("/echo/x")
                 .header("Origin", "http://localhost:3000").header("Access-Control-Request-Method", "GET")
