@@ -166,7 +166,16 @@ cd services/trading-service && mvn spring-boot:run
 cd services/market-service && mvn spring-boot:run
 cd services/analytics-service && mvn spring-boot:run
 cd services/api-gateway && mvn spring-boot:run
+cd services/identity-service && mvn spring-boot:run   # accounts, tokens, profiles (needs Postgres and Redis)
 ```
+
+**Frontend (Next.js)**
+```bash
+cd frontend/quantanatara
+cp .env.example .env.local   # set BFF_SHARED_SECRET; export the same value before starting the gateway
+npm install && npm run dev   # http://localhost:3000  (register, sign in, profile)
+```
+The browser only talks to the Next.js server, which keeps the tokens in httpOnly cookies and calls the gateway. If port 8080 is taken, start the gateway with `SERVER_PORT=8090` and set `GATEWAY_URL=http://localhost:8090`.
 
 **4. Eureka Dashboard**
 ```
@@ -204,7 +213,7 @@ distributed-trading-platform/
 │   ├── market-service/         # Market data
 │   ├── analytics-service/      # Indicators, screener, alerts (skeleton)
 │   ├── trade-execution-service/ # Trade settlement
-│   └── identity-service/       # Users, auth (JWT) and profiles (planned, F1)
+│   └── identity-service/       # Users, auth (JWT) and profiles
 └── docker-compose.yml          # Kafka (KRaft), PostgreSQL+TimescaleDB+pgvector, Redis
 ```
 
