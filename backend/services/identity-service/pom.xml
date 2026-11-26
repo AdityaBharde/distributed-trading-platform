@@ -60,10 +60,24 @@
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
 
-		<!-- Only the password encoders (BCrypt). The full Spring Security filter chain comes in Step 3. -->
+		<!-- Spring Security as an OAuth2 *resource server*: every service re-checks the JWT itself (defence in
+		     depth, in addition to the gateway). Also brings the BCrypt password encoders (security-crypto). -->
 		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-crypto</artifactId>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+		</dependency>
+
+		<!-- Redis: per-account login lockout counters (Step 6) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+		<!-- JWT creation/signing (RS256) and JWKS (JSON Web Key Set) building. Not managed by Spring Boot, so
+		     pinned to the 9.37 line that Spring Security 6.5 (used by the gateway in Step 5) is built on. -->
+		<dependency>
+			<groupId>com.nimbusds</groupId>
+			<artifactId>nimbus-jose-jwt</artifactId>
+			<version>9.37.4</version>
 		</dependency>
 
 		<dependency>

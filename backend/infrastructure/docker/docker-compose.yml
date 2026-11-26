@@ -93,8 +93,12 @@ services:
     depends_on:
       service-registry:
         condition: service_healthy
+      redis:
+        condition: service_healthy   # rate limiting; /auth/** refuses requests when Redis is down
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
+      - SECURITY_JWT_JWK_SET_URI=http://identity-service:8083/.well-known/jwks.json
+      - SPRING_DATA_REDIS_HOST=redis
       - JAVA_TOOL_OPTIONS=-Xms256m -Xmx512m
     restart: unless-stopped
     healthcheck:
@@ -164,6 +168,7 @@ services:
         condition: service_healthy
     environment:
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SECURITY_JWT_JWK_SET_URI=http://identity-service:8083/.well-known/jwks.json
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/orderdb
       - SPRING_DATASOURCE_USERNAME=postgres
@@ -190,6 +195,7 @@ services:
         condition: service_healthy
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
+      - SECURITY_JWT_JWK_SET_URI=http://identity-service:8083/.well-known/jwks.json
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx384m -XX:+UseSerialGC
     restart: unless-stopped
     healthcheck:
@@ -212,6 +218,7 @@ services:
         condition: service_healthy
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
+      - SECURITY_JWT_JWK_SET_URI=http://identity-service:8083/.well-known/jwks.json
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx384m -XX:+UseSerialGC
     restart: unless-stopped
     healthcheck:
@@ -234,8 +241,11 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy   # per-account login lockout counters
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
+      - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/identitydb
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}

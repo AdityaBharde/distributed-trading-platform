@@ -3,6 +3,7 @@ package com.trading.identity_service;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -17,5 +18,12 @@ public class TestcontainersConfiguration {
     @ServiceConnection
     PostgreSQLContainer<?> postgres() {
         return new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"));
+    }
+
+    /** Real Redis for the login-lockout counters. name = "redis" tells Spring Boot which service this is. */
+    @Bean
+    @ServiceConnection(name = "redis")
+    GenericContainer<?> redis() {
+        return new GenericContainer<>(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379);
     }
 }
