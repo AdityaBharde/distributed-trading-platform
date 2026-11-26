@@ -99,6 +99,7 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
       - SECURITY_JWT_JWK_SET_URI=http://identity-service:8083/.well-known/jwks.json
       - SPRING_DATA_REDIS_HOST=redis
+      - BFF_SHARED_SECRET=${BFF_SHARED_SECRET:-}
       - JAVA_TOOL_OPTIONS=-Xms256m -Xmx512m
     restart: unless-stopped
     healthcheck:

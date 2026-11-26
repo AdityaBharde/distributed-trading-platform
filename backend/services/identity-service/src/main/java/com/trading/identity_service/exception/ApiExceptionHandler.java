@@ -57,6 +57,12 @@ public class ApiExceptionHandler {
                 .body(ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage()));
     }
 
+    @ExceptionHandler(AccountNotFoundException.class)
+    ResponseEntity<ProblemDetail> accountNotFound(AccountNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage()));
+    }
+
     @ExceptionHandler(InvalidCredentialsException.class)
     ResponseEntity<ProblemDetail> unauthorized(InvalidCredentialsException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
