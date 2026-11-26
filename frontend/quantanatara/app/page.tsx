@@ -1,9 +1,12 @@
 // app/page.tsx
+import Link from "next/link";
+
 export default function Home() {
   return (
       <main className="min-h-screen bg-slate-950 text-white p-8">
-        <header className="border-b border-slate-800 pb-4 mb-8">
+        <header className="border-b border-slate-800 pb-4 mb-8 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold text-emerald-400">Quantanatara Trading Console</h1>
+          <Link href="/profile" className="text-sm underline">Your profile</Link>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
