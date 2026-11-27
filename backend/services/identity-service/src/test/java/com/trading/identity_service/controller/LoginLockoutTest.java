@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
-@TestPropertySource(properties = {"DB_PASSWORD=unused-in-tests", "eureka.client.enabled=false", "login.lock-duration=3s"})
+@TestPropertySource(properties = {"DB_PASSWORD=unused-in-tests", "login.lock-duration=3s"})
 class LoginLockoutTest {
 
     static final String PASSWORD = "correct horse battery";

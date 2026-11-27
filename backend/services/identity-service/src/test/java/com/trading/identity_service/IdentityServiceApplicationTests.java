@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** Boots the whole app against a real Postgres: Flyway migrates, then Hibernate validates the schema. */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
-@TestPropertySource(properties = {"DB_PASSWORD=unused-in-tests", "eureka.client.enabled=false"})
+@TestPropertySource(properties = {"DB_PASSWORD=unused-in-tests"})
 class IdentityServiceApplicationTests {
 
 	@Autowired

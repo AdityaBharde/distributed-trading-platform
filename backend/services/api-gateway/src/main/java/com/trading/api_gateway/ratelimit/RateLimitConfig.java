@@ -29,7 +29,6 @@ public class RateLimitConfig {
         this.bffSecret = bffSecret.getBytes(StandardCharsets.UTF_8);
     }
 
-    /** Normal API routes: a logged-in user gets their own bucket (JWT sub), anonymous traffic is bucketed by IP. */
     @Bean
     @Primary   // Spring Cloud Gateway injects one default KeyResolver; routes still choose theirs by name
     KeyResolver userOrIpKeyResolver() {

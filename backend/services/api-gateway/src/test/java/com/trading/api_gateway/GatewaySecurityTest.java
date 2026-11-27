@@ -23,7 +23,6 @@ import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.cloud.gateway.filter.ratelimit.RedisRateLimiter;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 import reactor.netty.DisposableServer;
@@ -42,7 +41,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * (a fixed public key instead of downloading the JWKS); every other check is the production code.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@TestPropertySource(properties = "eureka.client.enabled=false")
 @Import({TestcontainersConfiguration.class, GatewaySecurityTest.TestJwtConfig.class})
 class GatewaySecurityTest {
 
@@ -195,7 +193,7 @@ class GatewaySecurityTest {
 
     @Test
     void authEndpointsArePublicButStrictlyRateLimitedPerIp() {
-        // No token needed. With no identity-service running the route fails (503), but never 401/403.
+        // No token needed. The route may fail if identity-service is not running, but never with 401/403.
         for (int i = 1; i <= 5; i++) {
             int status = client.post().uri("/auth/login").exchange().returnResult(String.class).getStatus().value();
             assertThat(status).as("attempt %d", i).isNotIn(401, 403, 429);

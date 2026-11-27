@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // use the container, not H2
 @Import(TestcontainersConfiguration.class)
-@TestPropertySource(properties = {"DB_PASSWORD=unused-in-tests", "eureka.client.enabled=false"})
+@TestPropertySource(properties = {"DB_PASSWORD=unused-in-tests"})
 class UserRepositoryTest {
 
     @Autowired

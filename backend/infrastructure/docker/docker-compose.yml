@@ -66,23 +66,6 @@ services:
       timeout: 5s
       retries: 5
 
-  service-registry:
-    build: ../../infrastructure/service-registry
-    container_name: service-registry
-    networks:
-      - trading-network
-    ports:
-      - "8761:8761"
-    environment:
-      - JAVA_TOOL_OPTIONS=-Xms256m -Xmx512m
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8761/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
   api-gateway:
     build: ../../services/api-gateway
     container_name: api-gateway
@@ -91,19 +74,20 @@ services:
     ports:
       - "8090:8090"
     depends_on:
-      service-registry:
-        condition: service_healthy
       redis:
         condition: service_healthy   # rate limiting; /auth/** refuses requests when Redis is down
     environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
       - SECURITY_JWT_JWK_SET_URI=http://identity-service:8083/.well-known/jwks.json
+      - TRADING_SERVICE_URL=http://trading-service:8081
+      - MARKET_SERVICE_URL=http://market-service:8082
+      - IDENTITY_SERVICE_URL=http://identity-service:8083
+      - ANALYTICS_SERVICE_URL=http://analytics-service:8084
       - SPRING_DATA_REDIS_HOST=redis
       - BFF_SHARED_SECRET=${BFF_SHARED_SECRET:-}
       - JAVA_TOOL_OPTIONS=-Xms256m -Xmx512m
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8090/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -164,14 +148,11 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-      service-registry:
-        condition: service_healthy
       postgres:
         condition: service_healthy
     environment:
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - SECURITY_JWT_JWK_SET_URI=http://identity-service:8083/.well-known/jwks.json
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/orderdb
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
@@ -193,15 +174,12 @@ services:
     ports:
       - "8082:8082"
     depends_on:
-      service-registry:
-        condition: service_healthy
       postgres:
         condition: service_healthy
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/marketdb
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
       - SECURITY_JWT_JWK_SET_URI=http://identity-service:8083/.well-known/jwks.json
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx384m -XX:+UseSerialGC
     restart: unless-stopped
@@ -220,11 +198,7 @@ services:
       - trading-network
     ports:
       - "8084:8084"
-    depends_on:
-      service-registry:
-        condition: service_healthy
     environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
       - SECURITY_JWT_JWK_SET_URI=http://identity-service:8083/.well-known/jwks.json
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx384m -XX:+UseSerialGC
     restart: unless-stopped
@@ -244,14 +218,11 @@ services:
     ports:
       - "8083:8083"
     depends_on:
-      service-registry:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy   # per-account login lockout counters
     environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/identitydb
       - SPRING_DATASOURCE_USERNAME=postgres

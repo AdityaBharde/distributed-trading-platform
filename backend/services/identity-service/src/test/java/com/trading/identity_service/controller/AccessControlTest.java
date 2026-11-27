@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
-@TestPropertySource(properties = {"DB_PASSWORD=unused-in-tests", "eureka.client.enabled=false"})
+@TestPropertySource(properties = {"DB_PASSWORD=unused-in-tests"})
 class AccessControlTest {
 
     static final String PASSWORD = "correct horse battery";

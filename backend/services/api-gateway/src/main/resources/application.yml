@@ -1,0 +1,115 @@
+server:
+  port: 8090
+
+services:
+  trading:
+    url: ${TRADING_SERVICE_URL:http://localhost:8081}
+  market:
+    url: ${MARKET_SERVICE_URL:http://localhost:8082}
+  identity:
+    url: ${IDENTITY_SERVICE_URL:http://localhost:8083}
+  analytics:
+    url: ${ANALYTICS_SERVICE_URL:http://localhost:8084}
+
+# The gateway verifies every access token with identity-service's PUBLIC key (downloaded from the JWKS endpoint)
+security:
+  jwt:
+    jwk-set-uri: http://localhost:8083/.well-known/jwks.json
+    issuer: identity-service
+
+app:
+  cors:
+    allowed-origins: http://localhost:3000   # browser origins allowed to call the gateway
+  bff:
+    # The Next.js server proves who it is with this secret; only then is its X-Forwarded-For believed.
+    # Empty = nobody is trusted. Use the same value here and in the frontend.
+    shared-secret: ${BFF_SHARED_SECRET:}
+
+spring:
+  application:
+    name: api-gateway
+  data:
+    redis:   # rate-limit buckets; short timeouts so an outage is noticed fast
+      host: localhost
+      port: 6379
+      timeout: 500ms
+      connect-timeout: 500ms
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # Each service is reached at /<name>/** and the prefix is stripped: /market/health -> market-service /health
+          routes:
+            - id: trading-service
+              uri: ${services.trading.url}
+              predicates:
+                - Path=/trading/**
+              filters:
+                - StripPrefix=1
+                # The normal limit, written once (&userRateLimit) and reused below (*userRateLimit):
+                # per user, or per IP if anonymous; 20 requests/s with bursts up to 40.
+                # If Redis is down these routes FAIL OPEN.
+                - &userRateLimit
+                  name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@userOrIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: 20    # tokens added per second
+                    redis-rate-limiter.burstCapacity: 40    # bucket size
+                    redis-rate-limiter.requestedTokens: 1   # cost of one request
+
+            - id: market-service
+              uri: ${services.market.url}
+              predicates:
+                - Path=/market/**
+              filters:
+                - StripPrefix=1
+                - *userRateLimit
+
+            - id: analytics-service
+              uri: ${services.analytics.url}
+              predicates:
+                - Path=/analytics/**
+              filters:
+                - StripPrefix=1
+                - *userRateLimit
+
+            - id: orders   # existing order API, kept without a prefix
+              uri: ${services.trading.url}
+              predicates:
+                - Path=/orders/**
+              filters:
+                - *userRateLimit
+
+            # Auth is strict and FAILS CLOSED: 503 without Redis, and per IP a burst of 5, then one request
+            # every 12 seconds (60 tokens, refill 1/s, each request costs 12)
+            - id: identity-service
+              uri: ${services.identity.url}
+              predicates:
+                - Path=/auth/**
+              filters:
+                - RequireRedis
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@ipKeyResolver}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 12
+                # The shared secret is for the gateway only: remove it after the limiter has read it
+                - RemoveRequestHeader=X-BFF-Secret
+
+            - id: profile
+              uri: ${services.identity.url}
+              predicates:
+                - Path=/profile/**
+              filters:
+                - *userRateLimit
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true

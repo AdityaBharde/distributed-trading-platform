@@ -34,7 +34,7 @@ Trade Execution Service
 Kafka Event Bus (TradeExecutedEvent)
 ```
 
-All services register with **Eureka Service Discovery** and communicate asynchronously via **Apache Kafka** for temporal decoupling and durability.
+Services are reached at fixed, configurable addresses (no service registry) and communicate asynchronously via **Apache Kafka** for temporal decoupling and durability.
 
 Each service owns its own **PostgreSQL** database instance — no shared databases between services (strict bounded context).
 
@@ -50,7 +50,6 @@ Each service owns its own **PostgreSQL** database instance — no shared databas
 | `analytics-service` | Indicators, screener, alerts (skeleton for now) |
 | `trade-execution-service` | Handles post-match trade settlement and execution lifecycle |
 | `user-service` | Manages user accounts, authentication, and portfolios |
-| `infrastructure/service-registry` | Eureka server — all services register and discover each other here |
 
 ---
 
@@ -61,7 +60,7 @@ Each service owns its own **PostgreSQL** database instance — no shared databas
 | Language | Java 17 |
 | Framework | Spring Boot 3.x |
 | API Gateway | Spring Cloud Gateway |
-| Service Discovery | Netflix Eureka (Spring Cloud) |
+| Service addresses | Configuration (environment variables); Docker DNS in Compose |
 | Message Broker | Apache Kafka |
 | Database | PostgreSQL (per-service instances) |
 | Containerization | Docker & Docker Compose |
@@ -78,8 +77,8 @@ Synchronous REST creates tight coupling — if the matching engine is slow or do
 **Why per-service databases?**
 A shared database would mean services can step on each other's data and schema — defeating the purpose of microservices. Each service owns its data and exposes it only through its API.
 
-**Why Eureka for service discovery?**
-In a distributed system, services can't have hardcoded addresses. Eureka lets every service register itself and discover others dynamically, which is essential when running multiple instances or doing rolling deploys.
+**Why no service registry?**
+With one instance of each service, fixed addresses are simpler and do not depend on the machine's network. Docker Compose and Kubernetes provide DNS names; the gateway reads each address from an environment variable.
 
 ---
 
@@ -154,13 +153,7 @@ docker compose up -d
 ```
 When running a service outside Docker, export `DB_PASSWORD` (same value as `POSTGRES_PASSWORD`) first. Postgres is published on host port **5434** (not 5432, which a native Postgres often occupies); services inside Docker still use `postgres:5432`.
 
-**2. Start the service registry (Eureka)**
-```bash
-cd infrastructure/service-registry
-mvn spring-boot:run
-```
-
-**3. Start each service** (in separate terminals)
+**2. Start each service** (in separate terminals)
 ```bash
 cd services/trading-service && mvn spring-boot:run
 cd services/market-service && mvn spring-boot:run
@@ -175,16 +168,11 @@ cd frontend/quantanatara
 cp .env.example .env.local   # set BFF_SHARED_SECRET; export the same value before starting the gateway
 npm install && npm run dev   # http://localhost:3000  (register, sign in, profile)
 ```
-The browser only talks to the Next.js server, which keeps the tokens in httpOnly cookies and calls the gateway. If port 8080 is taken, start the gateway with `SERVER_PORT=8090` and set `GATEWAY_URL=http://localhost:8090`.
+The browser only talks to the Next.js server, which keeps the tokens in httpOnly cookies and calls the gateway. The gateway listens on port 8090, so set `GATEWAY_URL=http://localhost:8090`. Press Ctrl+K to search stocks: `market-service` (needs Postgres and `DB_PASSWORD`) loads the NSE list on its first start. On a database volume created before F2, create it once with `docker exec postgres psql -U postgres -c "CREATE DATABASE marketdb;"`.
 
-**4. Eureka Dashboard**
+**3. API Gateway entry point**
 ```
-http://localhost:8761
-```
-
-**5. API Gateway entry point**
-```
-http://localhost:8080
+http://localhost:8090
 ```
 
 ---
@@ -194,7 +182,7 @@ http://localhost:8080
 - **Event-driven architecture** — services communicate through durable, asynchronous Kafka events rather than blocking HTTP calls
 - **Temporal decoupling** — producers and consumers operate independently; a slow consumer doesn't block a producer
 - **Bounded contexts** — each service owns its schema; no cross-service database access
-- **Service discovery** — dynamic registration and lookup via Eureka; no hardcoded service URLs
+- **Configuration over discovery** — service addresses come from environment variables
 - **SAGA pattern** — distributed transaction management across services without a global transaction manager *(planned)*
 - **Idempotency** — event consumers designed to safely handle duplicate delivery *(planned)*
 - **Circuit breaker** — fault isolation using Resilience4j to prevent cascading failures *(planned)*
@@ -205,8 +193,7 @@ http://localhost:8080
 
 ```
 distributed-trading-platform/
-├── infrastructure/
-│   └── service-registry/       # Eureka discovery server
+├── infrastructure/             # Docker Compose, database init, Kubernetes manifests
 ├── services/
 │   ├── api-gateway/            # Spring Cloud Gateway
 │   ├── trading-service/        # Orders (Kafka producer) + matching engine (Kafka consumer)

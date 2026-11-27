@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 export const ACCESS_COOKIE = "qt_access";
 export const REFRESH_COOKIE = "qt_refresh";
 
-const GATEWAY_URL = process.env.GATEWAY_URL ?? "http://localhost:8080";
+const GATEWAY_URL = process.env.GATEWAY_URL ?? "http://localhost:8090";
 const BFF_SHARED_SECRET = process.env.BFF_SHARED_SECRET ?? "";
 
 export type Tokens = { accessToken: string; refreshToken: string; expiresIn: number };
