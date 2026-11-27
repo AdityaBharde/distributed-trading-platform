@@ -7,7 +7,7 @@ export function proxy(request: NextRequest) {
   const hasSession = request.cookies.has("qt_refresh");
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/profile") && !hasSession) {
+  if ((pathname.startsWith("/profile") || pathname.startsWith("/stocks")) && !hasSession) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
   if ((pathname === "/login" || pathname === "/register") && hasSession) {
@@ -17,5 +17,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/profile/:path*", "/login", "/register"],
+  matcher: ["/profile/:path*", "/stocks/:path*", "/login", "/register"],
 };

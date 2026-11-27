@@ -38,3 +38,18 @@ export async function errorMessage(response: Response): Promise<string> {
     return `Request failed (${response.status})`;
   }
 }
+
+/** A stock as market-service returns it. */
+export type Instrument = {
+  exchange: string;
+  symbol: string;
+  name: string;
+  series: string;
+  isin: string;
+  industry: string | null;
+  nifty500: boolean;
+  listingDate: string | null;
+  faceValue: number | null;
+  marketLot: number | null;
+  active: boolean;
+};

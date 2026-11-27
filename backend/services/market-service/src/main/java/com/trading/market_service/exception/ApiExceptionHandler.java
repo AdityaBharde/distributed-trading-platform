@@ -6,12 +6,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-/** Maps exceptions to RFC 9457 problem-details JSON, like identity-service does. */
+/**
+ * Maps exceptions to RFC 9457 problem-details JSON, like identity-service does. The base class covers Spring's own
+ * errors (missing or invalid parameter -> 400), so they are answered here instead of being forwarded to /error,
+ * where the security rules would run again.
+ */
 @RestControllerAdvice
-public class ApiExceptionHandler {
+public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+    @ExceptionHandler(InstrumentNotFoundException.class)
+    ProblemDetail notFound(InstrumentNotFoundException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
+    }
 
     @ExceptionHandler(ImportInProgressException.class)
     ProblemDetail inProgress(ImportInProgressException e) {

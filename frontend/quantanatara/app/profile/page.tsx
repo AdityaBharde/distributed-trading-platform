@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { AppHeader } from "@/components/app-header";
 import { buttonVariants } from "@/components/ui/button";
 import { errorMessage, profileSchema, type Preferences, type Profile } from "@/lib/schemas";
 
@@ -103,6 +104,8 @@ export default function ProfilePage() {
   }
 
   return (
+    <>
+    <AppHeader />
     <main className="mx-auto flex w-full max-w-md flex-col gap-6 p-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold">Your profile</h1>
@@ -160,5 +163,6 @@ export default function ProfilePage() {
         </Link>
       </div>
     </main>
+    </>
   );
 }
